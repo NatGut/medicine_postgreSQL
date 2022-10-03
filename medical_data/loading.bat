@@ -9,7 +9,7 @@ REM Почему нельзя в .bat-файле просто написать �
 setlocal
 SET PGCLIENTENCODING=utf-8
 set PGPASSWORD=55566677
-"c:\Program Files\PostgreSQL\13\bin\psql.exe" -h localhost  -U postgres -d gleb -c "copy raw.JackDoeRaw from STDIN with delimiter as ','  CSV  QUOTE '""';" < "d:\RawData\JackDoe 05.03.2022.csv"
+"c:\Program Files\PostgreSQL\13\bin\psql.exe" -h localhost  -U postgres -d gleb -c "copy raw.JackDoeRaw from STDIN with delimiter as ','  CSV  QUOTE '""';" < "d:\RawData\JackDoe 30.09.2022.csv"
 "c:\Program Files\PostgreSQL\13\bin\psql.exe" -h localhost  -U postgres -d gleb -c "insert into raw.raw_data select * from raw.JackDoeRaw;
 "c:\Program Files\PostgreSQL\13\bin\psql.exe" -h localhost  -U postgres -d gleb -c "truncate table raw.JackDoeRaw;
 pause

@@ -160,8 +160,7 @@ select "Date",
        "Network Device Disassociated Reason",
        "Network Device Disconnected Reason",
        "Sensor Exception",
-       "Preset Temp Basal Name",
-       "LoadDateTime"
+       "Preset Temp Basal Name"
 from raw.raw_data
 group by "Date",
        "Time",
@@ -211,8 +210,7 @@ group by "Date",
        "Network Device Disassociated Reason",
        "Network Device Disconnected Reason",
        "Sensor Exception",
-       "Preset Temp Basal Name",
-       "LoadDateTime"
+       "Preset Temp Basal Name"
 having count(*)>1
 order by "Date", "Time";
 
@@ -270,9 +268,8 @@ select CTID from
        "Network Device Disassociated Reason",
        "Network Device Disconnected Reason",
        "Sensor Exception",
-       "Preset Temp Basal Name",
-       "LoadDateTime"
-    order by "Date", "Time") as Num, "Date",
+       "Preset Temp Basal Name"
+   order by "Date", "Time") as Num, "Date",
        "Time",
        "New Device Time",
        "BG Reading (mmol/L)",
@@ -320,9 +317,8 @@ select CTID from
        "Network Device Disassociated Reason",
        "Network Device Disconnected Reason",
        "Sensor Exception",
-       "Preset Temp Basal Name",
-       "LoadDateTime"
-from raw.raw_data
+       "Preset Temp Basal Name"
+    from raw.raw_data
     ) as Dubl
 where Dubl.Num>1);
 
