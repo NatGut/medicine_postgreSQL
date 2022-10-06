@@ -1,41 +1,50 @@
---Создание сводной таблицы с данными по дате, времени и глюкозе с заменой типа полей на нужный
-select "Date"::date as Date,
-       "Time"::time as Time,
-       replace("Sensor Glucose (mmol/L)",',','.')::numeric(3,1) as "Sensor Glucose (mmol/L)"
-into selections.Glucose
+-- 1. Создаём нормализованную БД для глюкозы
+-- 1.1 Создание сводной таблицы с данными по дате, времени и глюкозе с заменой типа полей на нужный,
+-- а также берём колонку со временем и датой заливки данных для упрощения дальнейшего обновления этого отношения
+select "Date"::date,
+       "Time"::time,
+       replace("Sensor Glucose (mmol/L)",',','.')::numeric(3,1) as "Sensor Glucose (mmol/L)",
+       "LoadDateTime"
+into selections.gl_sensor_glucose
 from raw.raw_data
-where "Sensor Glucose (mmol/L)" is not null;
-
---Подсчёт всех строк
-select count(*)
-from selections.Glucose;
-
---Макс/мин даты в таблице
-select max(date) as max_date, min(date) as min_date
-       from selections.Glucose;
-
---Подсчёт записей на каждую дату
-select date, count(glucose)
-from selections.Glucose
-group by date
-order by date;
-
---Среднее значение глюкозы за всё время в таблице
-select round(avg("Sensor Glucose (mmol/L)"),2)
-from selections.Glucose;
-
---Среднее значение глюкозы за предыдущий день
-select round(avg("Sensor Glucose (mmol/L)"),2)
-from selections.Glucose
-where date in (
-select (max(date)-1)::date
-from selections.Glucose)
+where "Sensor Glucose (mmol/L)" is not null
+;
+-- Накидываем простой индекс на поле Date в таблицу с глюкозой сенсора, т.к. соединять отношения и агрегировать данные будем чаще всего по дате.
+create index date_sensor_glucose on selections.gl_sensor_glucose ("Date")
 ;
 
---Средняя глюкоза за последние 30 дней
+-- 1.2 Работа с глюкозой, проверка целесообразности индексов
+-- Подсчёт всех строк
+select count(*)
+from selections.gl_sensor_glucose;
+
+-- Макс/мин даты в таблице
+select max("Date") as max_date, min("Date") as min_date
+       from selections.gl_sensor_glucose;
+
+-- Подсчёт записей на каждую дату
+select "Date", count("Sensor Glucose (mmol/L)")
+from selections.gl_sensor_glucose
+group by "Date"
+order by "Date";
+
+-- Среднее значение глюкозы за всё время в таблице
 select round(avg("Sensor Glucose (mmol/L)"),2)
-from selections.Glucose
-where date BETWEEN (
-select (max(date)-interval '30 days')::date
-from selections.Glucose) and (select max(date) from selections.Glucose)
+from selections.gl_sensor_glucose;
+
+-- Среднее значение глюкозы за предыдущий день
+select round(avg("Sensor Glucose (mmol/L)"),2)
+from selections.gl_sensor_glucose
+where "Date" in (
+select (max("Date")-1)
+from selections.gl_sensor_glucose)
+;
+
+-- Средняя глюкоза за последние 30 дней
+-- explain (если включить explain, как видим, индексы работают, postgres использует их для построения планов запросов по диапазону дат)
+select round(avg("Sensor Glucose (mmol/L)"),2)
+from selections.gl_sensor_glucose
+where "Date" BETWEEN (
+select (max("Date")-interval '30 days')
+from selections.gl_sensor_glucose) and (select max("Date") from selections.gl_sensor_glucose)
 ;
