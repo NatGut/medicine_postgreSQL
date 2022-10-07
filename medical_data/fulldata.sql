@@ -13,12 +13,13 @@ where "Sensor Glucose (mmol/L)" is not null
 create index date_sensor_glucose on selections.gl_sensor_glucose ("Date")
 ;
 
--- 1.2 Работа с глюкозой, проверка целесообразности индексов
+-- 1.2 Тестовая работа с глюкозой, проверка целесообразности индексов
 -- Подсчёт всех строк
 select count(*)
 from selections.gl_sensor_glucose;
 
 -- Макс/мин даты в таблице
+-- explain (если включить explain, как видим, индексы работают, postgres использует их для построения планов запросов по датам)
 select max("Date") as max_date, min("Date") as min_date
        from selections.gl_sensor_glucose;
 
