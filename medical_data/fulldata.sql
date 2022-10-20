@@ -51,32 +51,30 @@ from selections.gl_sensor_glucose) and (select max("Date") from selections.gl_se
 ;
 
 -- 1.3 Создание сводной таблицы по калибровке сенсора
---Делаем временную вью на чтение глюкометра
-create view temp_views.BG_read as
+--Делаем сводную таблицу на калибровку сенсора через три CTE
+--CTE на чтение глюкометра
+WITH w_BG_read as (
 select "Date"::date,
        "Time"::time,
        replace("BG Reading (mmol/L)", ',','.')::numeric(3,1) as "BG Reading (mmol/L)",
        "LoadDateTime"
 from raw.raw_data
-where "BG Reading (mmol/L)" is not null;
--- Временное вью на калибровку
-create view temp_views.calibration as
+where "BG Reading (mmol/L)" is not null),
+-- CTE на калибровку
+w_calibration as (
 select "Date"::date,
        "Time"::time,
-       replace("Sensor Calibration BG (mmol/L)", ',','.')::numeric(3,1) as "Sensor Calibration BG (mmol/L)",
-       "LoadDateTime"
-from raw.raw_data
-where "Sensor Calibration BG (mmol/L)" is not null;
--- Временное вью на проваленную калибровку
-create view temp_views.failed_calibration as
+       replace("Sensor Calibration BG (mmol/L)", ',','.')::numeric(3,1) as "Sensor Calibration BG (mmol/L)"
+       from raw.raw_data
+where "Sensor Calibration BG (mmol/L)" is not null),
+-- CTE на отмену калибровки
+w_failed_calibration as (
 select "Date"::date,
        "Time"::time,
-       "Sensor Calibration Rejected Reason",
-       "LoadDateTime"
-from raw.raw_data
-where "Sensor Calibration Rejected Reason" is not null;
---Соединяем временные вьюшки по дате и времени (по документации помпы, от времени чтения глюкометра до калибровки не более 15 минут)
-select A."Date" as Date_reading,
+       "Sensor Calibration Rejected Reason"
+       from raw.raw_data
+where "Sensor Calibration Rejected Reason" is not null)
+    select A."Date" as Date_reading,
        A."Time" as Time_reading,
        "BG Reading (mmol/L)",
        B."Date" as Date_calibration,
@@ -84,13 +82,53 @@ select A."Date" as Date_reading,
        "Sensor Calibration BG (mmol/L)",
        C."Date" as Date_failed,
        C."Time"as Time_failed,
-       "Sensor Calibration Rejected Reason"
+       "Sensor Calibration Rejected Reason",
+        A."LoadDateTime"
 into selections.gl_calibration
-from temp_views.BG_read A
-    left join temp_views.calibration B on
+from w_BG_read A
+    left join w_calibration B on
         A."Date"=B."Date" and
         (B."Time" >= A."Time" and B."Time" <= (A."Time"+interval'16minutes'))
-left join temp_views.failed_calibration C
+left join w_failed_calibration C
     on A."Date"=C."Date" and
        (C."Time" >= A."Time" and C."Time" <= (A."Time"+interval'16minutes'))
+;
+--И делаем такую же вьюшку на калибровку сенсора для дальнейшего обновления данных
+create view temp_views.gl_calibration as select* from (
+WITH w_BG_read as (
+select "Date"::date,
+       "Time"::time,
+       replace("BG Reading (mmol/L)", ',','.')::numeric(3,1) as "BG Reading (mmol/L)",
+       "LoadDateTime"
+from raw.raw_data
+where "BG Reading (mmol/L)" is not null),
+w_calibration as (
+select "Date"::date,
+       "Time"::time,
+       replace("Sensor Calibration BG (mmol/L)", ',','.')::numeric(3,1) as "Sensor Calibration BG (mmol/L)"
+       from raw.raw_data
+where "Sensor Calibration BG (mmol/L)" is not null),
+w_failed_calibration as (
+select "Date"::date,
+       "Time"::time,
+       "Sensor Calibration Rejected Reason"
+       from raw.raw_data
+where "Sensor Calibration Rejected Reason" is not null)
+    select A."Date" as Date_reading,
+       A."Time" as Time_reading,
+       "BG Reading (mmol/L)",
+       B."Date" as Date_calibration,
+       B."Time" as Time_calibration,
+       "Sensor Calibration BG (mmol/L)",
+       C."Date" as Date_failed,
+       C."Time"as Time_failed,
+       "Sensor Calibration Rejected Reason",
+        A."LoadDateTime"
+from w_BG_read A
+    left join w_calibration B on
+        A."Date"=B."Date" and
+        (B."Time" >= A."Time" and B."Time" <= (A."Time"+interval'16minutes'))
+left join w_failed_calibration C
+    on A."Date"=C."Date" and
+       (C."Time" >= A."Time" and C."Time" <= (A."Time"+interval'16minutes'))) as AAA
 ;
